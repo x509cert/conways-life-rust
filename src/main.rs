@@ -3,8 +3,8 @@ use std::mem;
 
 const WIDTH: usize = 1280;
 const HEIGHT: usize = 960;
-const ALIVE_START: u32 = 0x777777FF; //0xFFFFFFFF;
-const ALIVE_GENERATION_INC: u32 = 0x03010300;
+const ALIVE_START: u32 = 0xFFFF00; // Yellow
+const ALIVE_GENERATION_INC: u32 = 0;
 const DEAD: u32 = 0x00000000;
 
 fn populate_game(game_buff: &mut [u32]) {
@@ -24,14 +24,19 @@ fn next_generation(game_buff: &[u32], swap_buff: &mut [u32]) {
 }
 
 #[inline(always)]
+fn to_rgb(r: usize, g: usize, b: usize) -> u32 {
+    ((r << 16) | (g << 8) | b) as u32
+}
+
+#[inline(always)]
 fn is_alive(buff: &[u32], x: usize, y: usize) -> u32  {
     let mut neighbor: u32 = 0;
 
+    // check neighbors
     if x > 0 && buff[y * WIDTH + x-1] > 0 { neighbor += 1};        // left
     if x < WIDTH && buff[y * WIDTH + x+1] > 0 { neighbor += 1};    // right
     if y > 0 && buff[(y-1) * WIDTH + x] > 0 { neighbor += 1};      // above
     if y < HEIGHT && buff[(y+1) * WIDTH + x] > 0 { neighbor += 1}; // below
-
     if y > 0 && x > 0 && buff[(y-1) * WIDTH + (x-1)] > 0 { neighbor += 1}; // above left
     if y > 0 && x < WIDTH && buff[(y-1) * WIDTH + (x+1)] > 0 { neighbor += 1}; // above right
     if y < HEIGHT && x > 0 && buff[(y+1) * WIDTH + (x-1)] > 0 { neighbor += 1}; // below left
@@ -47,7 +52,8 @@ fn is_alive(buff: &[u32], x: usize, y: usize) -> u32  {
 
     // alive and 2 or 3 neighbors == survive
     if current > 0 && (neighbor == 2 || neighbor == 3) {    
-        return 0xFF | (current + ALIVE_GENERATION_INC);// * (x as u32 * y as u32))  // this line is the color of the cell
+        return current + ALIVE_GENERATION_INC;// + ((x << 16 as u32) * (y << 0 as u32)) as u32  // this line is the color of the cell
+        //return to_rgb(x,y,(current & 0xFF ) as usize)
     }
 
     // alive and more than 3 neighbors =- die
