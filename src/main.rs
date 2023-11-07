@@ -1,8 +1,8 @@
 use minifb::{Key, Window, WindowOptions};
 use std::mem;
 
-const WIDTH: usize = 1280;
-const HEIGHT: usize = 960;
+const WIDTH: usize = 480;
+const HEIGHT: usize = 480;
 const ALIVE_START: u32 = 0xFFFF00; // Yellow
 const ALIVE_GENERATION_INC: u32 = 0;
 const DEAD: u32 = 0x00000000;
@@ -89,7 +89,6 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // We unwrap here as we want this code to exit if it fails.
         window
             .update_with_buffer(&game_buff, WIDTH, HEIGHT)
             .unwrap();
