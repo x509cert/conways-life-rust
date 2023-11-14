@@ -1,8 +1,8 @@
 use minifb::{Key, Window, WindowOptions};
 use std::mem;
 
-const WIDTH: usize = 480;
-const HEIGHT: usize = 480;
+const WIDTH: usize = 480*3;
+const HEIGHT: usize = 480*2;
 const ALIVE_START: u32 = 0xFFFF00; // Yellow
 const ALIVE_GENERATION_INC: u32 = 0;
 const DEAD: u32 = 0x00000000;
@@ -24,49 +24,40 @@ fn next_generation(game_buff: &[u32], swap_buff: &mut [u32]) {
 }
 
 #[inline(always)]
-fn to_rgb(r: usize, g: usize, b: usize) -> u32 {
-    ((r << 16) | (g << 8) | b) as u32
+fn to_rgb(r: usize, g: usize, b: usize, i: usize) -> u32 {
+    ((r << 16) | (g << 8) | i % 255) as u32
 }
 
 #[inline(always)]
 fn is_alive(buff: &[u32], x: usize, y: usize) -> u32  {
-    let mut neighbor: u32 = 0;
+    const NEIGHBOR_OFFSETS: [(isize, isize); 8] = [
+        (0, 1), (1, 0), (0, -1), (-1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)
+    ];
+    let mut neighbor = 0;
 
-    // check neighbors
-    if x > 0 && buff[y * WIDTH + x-1] > 0 { neighbor += 1};        // left
-    if x < WIDTH && buff[y * WIDTH + x+1] > 0 { neighbor += 1};    // right
-    if y > 0 && buff[(y-1) * WIDTH + x] > 0 { neighbor += 1};      // above
-    if y < HEIGHT && buff[(y+1) * WIDTH + x] > 0 { neighbor += 1}; // below
-    if y > 0 && x > 0 && buff[(y-1) * WIDTH + (x-1)] > 0 { neighbor += 1}; // above left
-    if y > 0 && x < WIDTH && buff[(y-1) * WIDTH + (x+1)] > 0 { neighbor += 1}; // above right
-    if y < HEIGHT && x > 0 && buff[(y+1) * WIDTH + (x-1)] > 0 { neighbor += 1}; // below left
-    if y < HEIGHT && x < WIDTH && buff[(y+1) * WIDTH + (x+1)] > 0 { neighbor += 1}; // above left
-
-    let current: u32 = buff[y * WIDTH + x];
-
-    // THE RULES!
-    // alive and < 2 neighbors == die
-    if current > 0 && neighbor < 2 {
-        return DEAD
+    for &(dx, dy) in &NEIGHBOR_OFFSETS {
+        let nx = x.wrapping_add(dx as usize);
+        let ny = y.wrapping_add(dy as usize );
+        if nx < WIDTH && ny < HEIGHT && buff[ny * WIDTH + nx] > 0 {
+            neighbor += 1;
+        }
     }
 
-    // alive and 2 or 3 neighbors == survive
-    if current > 0 && (neighbor == 2 || neighbor == 3) {    
-        return current + ALIVE_GENERATION_INC;// + ((x << 16 as u32) * (y << 0 as u32)) as u32  // this line is the color of the cell
-        //return to_rgb(x,y,(current & 0xFF ) as usize)
-    }
+    match buff[y * WIDTH + x] {
+        // alive and < 2 neighbors == die from loneliness
+        current if current > 0 && neighbor < 2 => DEAD,
 
-    // alive and more than 3 neighbors =- die
-    if neighbor > 3 {
-        return DEAD
-    }
+        // alive and 2 or 3 neighbors == survive
+        current if current > 0 && (neighbor == 2 || neighbor == 3) => current,
 
-    // dead and 3 neighbors == born
-    if current == 0 && neighbor == 3 {
-        return ALIVE_START
-    }
+        // alive and more than 3 neighbors == die for overcrowding
+        current if neighbor > 3 => DEAD,
 
-    DEAD
+        // dead and 3 neighbors == born
+        0 if neighbor == 3 => ALIVE_START,
+
+        _ => DEAD,
+    }
 }
 
 fn main() {
